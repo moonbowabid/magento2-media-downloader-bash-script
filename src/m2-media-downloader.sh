@@ -3,8 +3,8 @@
 #
 # Script to download the media files for Magento 2
 #
-# @author   Abid Hussain <malikabid2006@gmail.com>
-# @website  https://www.abidsir.in
+# @author   Abid Malik <abid@moonbow.co>
+# @website  https://www.moonbow.com
 # @version  1.0.0
 
 # Exit on error. Append "|| true" if you expect an error.
@@ -209,15 +209,15 @@ function _selfUpdate()
 function _printPoweredBy()
 {
     local _mpAscii
-    _mpAscii='
-  
+    _mpAscii=''
+
 ______________________________________________________________________________________
     _   _                                                    __                       
     /  /|                          /                         / |     /      ,        /
 ---/| /-|-----__-----__-----__----/__-----__----------------/__|----/__----------__-/-
   / |/  |   /   )  /   )  /   )  /   )  /   ) | /| /       /   |   /   )  /    /   /  
 _/__/___|__(___/__(___/__/___/__(___/__(___/__|/_|/_______/____|__(___/__/____(___/___
-                                                                                                                                                                   
+                                                                                                                                                                    
 
 '
     cat <<EOF
@@ -669,7 +669,7 @@ export LANG=C
 DEBUG=0
 _debug set -x
 VERSION="1.0.0"
-SCRIPT_URL='https://raw.githubusercontent.com/MagePsycho/magento2-media-downloader-bash-script/main/src/m2-media-downloader.sh'
+SCRIPT_URL='https://raw.githubusercontent.com/moonbowabid/magento2-media-downloader-bash-script/refs/heads/main/src/m2-media-downloader.sh'
 SCRIPT_LOCATION="${BASH_SOURCE[@]}"
 ABS_SCRIPT_PATH=$(readlink -f "$SCRIPT_LOCATION")
 
