@@ -262,7 +262,7 @@ Version $VERSION
         -t,     --type             Entity Type (category|product)
         -i,     --id               Entity ID
                 --all-products     Download images for all products
-                --all-categories   Download images for all categories
+                --all-categories   Download images for all categories (Category images)
         -dr     --dry-run          Show what would have been transferred
         -d,     --debug            Enable the debug mode (set -x)
         -v,     --version          Output version information and exit
@@ -274,6 +274,7 @@ Version $VERSION
         $(basename "$0") --type=product --id=123
         $(basename "$0") --type=category --id=456
         $(basename "$0") --all-products
+        $(basename "$0") --all-categories
         $(basename "$0") --type=product --id=123 --dry-run
         $(basename "$0") --type=category --id=456 --debug
 
