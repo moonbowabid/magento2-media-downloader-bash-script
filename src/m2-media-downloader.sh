@@ -3,8 +3,8 @@
 #
 # Script to download the media files for Magento 2
 #
-# @author   Raj KB <magepsycho@gmail.com>
-# @website  https://www.magepsycho.com
+# @author   Abid Hussain <malikabid2006@gmail.com>
+# @website  https://www.abidsir.in
 # @version  1.0.0
 
 # Exit on error. Append "|| true" if you expect an error.
@@ -210,19 +210,22 @@ function _printPoweredBy()
 {
     local _mpAscii
     _mpAscii='
-   __  ___              ___               __
-  /  |/  /__ ____ ____ / _ \___ __ ______/ /  ___
- / /|_/ / _ `/ _ `/ -_) ___(_-</ // / __/ _ \/ _ \
-/_/  /_/\_,_/\_, /\__/_/  /___/\_, /\__/_//_/\___/
-            /___/             /___/
+  
+______________________________________________________________________________________
+    _   _                                                    __                       
+    /  /|                          /                         / |     /      ,        /
+---/| /-|-----__-----__-----__----/__-----__----------------/__|----/__----------__-/-
+  / |/  |   /   )  /   )  /   )  /   )  /   ) | /| /       /   |   /   )  /    /   /  
+_/__/___|__(___/__(___/__/___/__(___/__(___/__|/_|/_______/____|__(___/__/____(___/___
+                                                                                                                                                                   
+
 '
     cat <<EOF
 ${_green}
 Powered By:
 $_mpAscii
 
- >> Store: ${_reset}${_underline}${_blue}https://www.magepsycho.com${_reset}${_reset}${_green}
- >> Blog:  ${_reset}${_underline}${_blue}https://blog.magepsycho.com${_reset}${_reset}${_green}
+ >> Store: ${_reset}${_underline}${_blue}https://www.moonbow.co${_reset}${_reset}${_green}
 
 ################################################################
 ${_reset}
@@ -232,17 +235,21 @@ EOF
 ################################################################################
 # SCRIPT FUNCTIONS
 ################################################################################
+
+# Print the current version of the script
 function _printVersion()
 {
     echo "Version $VERSION"
 }
 
+# Print the version and exit the script
 function _printVersionAndExit()
 {
     _printVersion
     exit 1
 }
 
+# Print the usage instructions for the script
 function _printUsage()
 {
     cat <<EOF
@@ -254,15 +261,21 @@ Version $VERSION
     Options:
         -t,     --type             Entity Type (category|product)
         -i,     --id               Entity ID
-        -h,     --help             Display this help and exit
+                --all-products     Download images for all products
+                --all-categories   Download images for all categories
         -dr     --dry-run          Show what would have been transferred
         -d,     --debug            Enable the debug mode (set -x)
         -v,     --version          Output version information and exit
         -u,     --update           Self-update the script from Git repository
                 --self-update      Self-update the script from Git repository
+        -h,     --help             Display this help and exit
 
     Examples:
-        $(basename "$0") --type=... --id=... [--dry-run] [--debug] [--version] [--self-update] [--help]
+        $(basename "$0") --type=product --id=123
+        $(basename "$0") --type=category --id=456
+        $(basename "$0") --all-products
+        $(basename "$0") --type=product --id=123 --dry-run
+        $(basename "$0") --type=category --id=456 --debug
 
 $(tput setaf 136)For SSH params, it's recommended to use the config file (~/${CONFIG_FILE} or ./${CONFIG_FILE})${_reset}
 EOF
@@ -270,17 +283,18 @@ EOF
     exit 1
 }
 
+# Check if all required command-line dependencies are available
 function checkCmdDependencies()
 {
     local _dependencies=(
-      rsync
-      ssh
-      sed
-      wget
-      curl
-      awk
-      mysql
-      php
+        rsync
+        ssh
+        sed
+        wget
+        curl
+        awk
+        mysql
+        php
     )
     local _depMissing
     local _depCounter=0
@@ -291,12 +305,16 @@ function checkCmdDependencies()
         fi
     done
     if [[ "${_depCounter}" -gt 0 ]]; then
-      _die "Could not find the following dependencies:${_depMissing}"
+        _die "Could not find the following dependencies:${_depMissing}"
     fi
 }
 
+# Process command-line arguments
 function processArgs()
 {
+    # Set default value for BY_ENTITY
+    BY_ENTITY="product"
+
     # Parse Arguments
     for arg in "$@"
     do
@@ -304,8 +322,17 @@ function processArgs()
             -t|--type=*)
                 ENTITY_TYPE="${arg#*=}"
             ;;
+            --by=*)
+                BY_ENTITY="${arg#*=}"
+            ;;
             -i|--id=*)
                 ENTITY_ID="${arg#*=}"
+            ;;
+            --all-products)
+                ALL_PRODUCTS=1
+            ;;
+            --all-categories)
+                ALL_CATEGORIES=1
             ;;
             -dr|--dry-run)
                 DRY_RUN=1
@@ -333,11 +360,13 @@ function processArgs()
     sanitizeArgs
 }
 
+# Initialize default arguments
 function initDefaultArgs()
 {
     INSTALL_DIR=$(pwd)
 }
 
+# Assert that the script is being run from a Magento 2 root directory
 function assertMage2Directory()
 {
     if [[ ! -f './bin/magento' ]] || [[ ! -f './app/etc/di.xml' ]] || [[ ! -f './app/etc/env.php' ]]; then
@@ -345,6 +374,7 @@ function assertMage2Directory()
     fi
 }
 
+# Load configuration values from config files
 function loadConfigValues()
 {
     # Load config if exists in home(~/)
@@ -358,6 +388,7 @@ function loadConfigValues()
     fi
 }
 
+# Sanitize input arguments
 function sanitizeArgs()
 {
     # remove trailing /
@@ -366,28 +397,30 @@ function sanitizeArgs()
     fi
 }
 
-function validateArgs()
-{
+# Validate input arguments
+function validateArgs() {
     ERROR_COUNT=0
 
-    if [[ -z "$ENTITY_TYPE" ]]; then
-        _error "Entity type (--type=...) cannot be empty"
-        ERROR_COUNT=$((ERROR_COUNT + 1))
-    fi
+    if [[ -z "$ALL_PRODUCTS" && -z "$ALL_CATEGORIES" ]]; then
+        if [[ -z "$ENTITY_TYPE" ]]; then
+            _error "Entity type (--type=...) cannot be empty"
+            ERROR_COUNT=$((ERROR_COUNT + 1))
+        fi
 
-    if [[ "$ENTITY_TYPE" && "$ENTITY_TYPE" != @(category|product) ]]; then
-        _error "Entity type (--type=...) is not valid. Supported: category|product"
-        ERROR_COUNT=$((ERROR_COUNT + 1))
-    fi
+        if [[ -n "$ENTITY_TYPE" && "$ENTITY_TYPE" != "category" && "$ENTITY_TYPE" != "product" ]]; then
+            _error "Entity type (--type=...) is not valid. Supported: category|product"
+            ERROR_COUNT=$((ERROR_COUNT + 1))
+        fi
 
-    if [[ -z "$ENTITY_ID" ]]; then
-        _error "Entity ID (--id=...) cannot be empty"
-        ERROR_COUNT=$((ERROR_COUNT + 1))
-    fi
+        if [[ -z "$ENTITY_ID" ]]; then
+            _error "Entity ID (--id=...) cannot be empty"
+            ERROR_COUNT=$((ERROR_COUNT + 1))
+        fi
 
-    if [[ "$ENTITY_ID" ]]  && [[ -z "${ENTITY_ID##*[!0-9]*}" ]]; then
-        _error "Entity ID (--id=...) is not valid"
-        ERROR_COUNT=$((ERROR_COUNT + 1))
+        if [[ "$ENTITY_ID" ]]  && [[ -z "${ENTITY_ID##*[!0-9]*}" ]]; then
+            _error "Entity ID (--id=...) is not valid"
+            ERROR_COUNT=$((ERROR_COUNT + 1))
+        fi
     fi
 
     if [[ -z "$SSH_HOST" ]]; then
@@ -410,67 +443,166 @@ function validateArgs()
         ERROR_COUNT=$((ERROR_COUNT + 1))
     fi
 
-    #echo "$ERROR_COUNT"
     [[ "$ERROR_COUNT" -gt 0 ]] && exit 1
 }
 
+# Prepare database parameters
 function prepareDBParams()
 {
-     $(php -r '
-      $env = include "./app/etc/env.php";
-      echo "declare -A config=()\n";
-      echo "config[db.prefix]=" . escapeshellarg($env["db"]["table_prefix"]) . "\n";
-      echo "config[db.host]=" . escapeshellarg($env["db"]["connection"]["default"]["host"]) . "\n";
-      echo "config[db.username]=" . escapeshellarg($env["db"]["connection"]["default"]["username"]) . "\n";
-      echo "config[db.password]=" . escapeshellarg($env["db"]["connection"]["default"]["password"]) . "\n";
-      echo "config[db.dbname]=" . escapeshellarg($env["db"]["connection"]["default"]["dbname"]) . "\n";
-    ')
+    if [[ "$ENABLE_MYSQL_DOCKER" == true ]]; then
+        # Use the configuration from .m2media.conf
+        [[ -n "$MYSQL_USER" ]] && DB_USER="$MYSQL_USER"
+        [[ -n "$MYSQL_PASSWORD" ]] && DB_PASS="$MYSQL_PASSWORD"
+        [[ -n "$MYSQL_DATABASE" ]] && DB_NAME="$MYSQL_DATABASE"
+        [[ -n "$MYSQL_PORT" ]] && DB_PORT="$MYSQL_PORT"
+        
+        # Set default values if not provided
+        DB_HOST=${CONTAINER_NAME:-"localhost"}
+        DB_PREFIX=${DB_PREFIX:-""}
+    else
+        # Use the existing code to fetch from env.php
+        $(php -r '
+          $env = include "./app/etc/env.php";
+          echo "declare -A config=()\n";
+          if (!empty($env["db"]["table_prefix"])) echo "config[db.prefix]=" . escapeshellarg($env["db"]["table_prefix"]) . "\n";
+          if (!empty($env["db"]["connection"]["default"]["host"])) echo "config[db.host]=" . escapeshellarg($env["db"]["connection"]["default"]["host"]) . "\n";
+          if (!empty($env["db"]["connection"]["default"]["username"])) echo "config[db.username]=" . escapeshellarg($env["db"]["connection"]["default"]["username"]) . "\n";
+          if (!empty($env["db"]["connection"]["default"]["password"])) echo "config[db.password]=" . escapeshellarg($env["db"]["connection"]["default"]["password"]) . "\n";
+          if (!empty($env["db"]["connection"]["default"]["dbname"])) echo "config[db.dbname]=" . escapeshellarg($env["db"]["connection"]["default"]["dbname"]) . "\n";
+        ')
 
-    DB_PREFIX="${config[db.prefix]}"
-    DB_HOST="${config[db.host]}"
-    DB_USER="${config[db.username]}"
-    DB_PASS="${config[db.password]}"
-    DB_NAME="${config[db.dbname]}"
+        [[ -n "${config[db.prefix]}" ]] && DB_PREFIX="${config[db.prefix]}"
+        [[ -n "${config[db.host]}" ]] && DB_HOST="${config[db.host]}"
+        [[ -n "${config[db.username]}" ]] && DB_USER="${config[db.username]}"
+        [[ -n "${config[db.password]}" ]] && DB_PASS="${config[db.password]}"
+        [[ -n "${config[db.dbname]}" ]] && DB_NAME="${config[db.dbname]}"
+    fi
+
+    # Debug output
+    if [[ "$DEBUG" -eq 1 ]]; then
+        echo "Using database configuration:"
+        [[ -n "$DB_HOST" ]] && echo "DB_HOST: $DB_HOST"
+        [[ -n "$DB_USER" ]] && echo "DB_USER: $DB_USER"
+        [[ -n "$DB_NAME" ]] && echo "DB_NAME: $DB_NAME"
+        [[ -n "$DB_PREFIX" ]] && echo "DB_PREFIX: $DB_PREFIX"
+        [[ -n "$DB_PORT" ]] && echo "DB_PORT: $DB_PORT"
+    fi
 }
 
+# Execute MySQL query
 function queryMysql()
 {
-   mysql -h "${DB_HOST}" -u "${DB_USER}" --password="${DB_PASS}" "${DB_NAME}" --execute="${SQL_QUERY}"
+    # _die ${SQL_QUERY} # Commented out debug line
+    if [[ "$ENABLE_MYSQL_DOCKER" == true ]]; then
+        # Run query for Docker container (-N skips column names, -s is silent/raw output, -r is raw)
+        docker exec -i "$CONTAINER_NAME" mysql -Nsr -u "${DB_USER}" --password="${DB_PASS}" "${DB_NAME}" --execute="${SQL_QUERY}"
+    else
+        # Run query for regular MySQL setup (-N skips column names, -s is silent/raw output, -r is raw)
+        mysql -Nsr -h "${DB_HOST}" -u "${DB_USER}" --password="${DB_PASS}" "${DB_NAME}" --execute="${SQL_QUERY}"
+    fi
 }
 
+# Get images by category
 function getImagesByCategory()
 {
-    SQL_QUERY="SELECT DISTINCT cpev.value FROM ${DB_PREFIX}catalog_product_entity e \
-INNER JOIN ${DB_PREFIX}catalog_category_product ccp ON e.entity_id = ccp.product_id \
-INNER JOIN ${DB_PREFIX}catalog_category_entity cce ON ccp.category_id = cce.entity_id \
-INNER JOIN ${DB_PREFIX}catalog_product_entity_varchar cpev ON e.entity_id = cpev.entity_id \
-INNER JOIN ${DB_PREFIX}eav_attribute ea ON cpev.attribute_id = ea.attribute_id AND ea.attribute_code IN ('image', 'thumbnail', 'small_image') AND ea.entity_type_id = 4 \
-WHERE ccp.category_id = '${ENTITY_ID}'";
+    local category_id="$1"
+    SQL_QUERY="SELECT DISTINCT cpev.value 
+               FROM ${DB_PREFIX}catalog_product_entity e 
+               INNER JOIN ${DB_PREFIX}catalog_category_product ccp ON e.entity_id = ccp.product_id 
+               INNER JOIN ${DB_PREFIX}catalog_product_entity_varchar cpev ON e.entity_id = cpev.entity_id 
+               INNER JOIN ${DB_PREFIX}eav_attribute ea ON cpev.attribute_id = ea.attribute_id 
+                   AND ea.attribute_code IN ('image', 'small_image', 'thumbnail') 
+                   AND ea.entity_type_id = 4 
+               WHERE ccp.category_id = '${category_id}'";
     queryMysql
 }
 
+# Get images by product
 function getImagesByProduct()
 {
     # @todo handle for configurable color swatches
-    SQL_QUERY="SELECT DISTINCT main.value FROM ${DB_PREFIX}catalog_product_entity_media_gallery AS main \
-INNER JOIN ${DB_PREFIX}catalog_product_entity_media_gallery_value_to_entity AS entity ON main.value_id = entity.value_id \
-INNER JOIN ${DB_PREFIX}eav_attribute AS attr ON main.attribute_id = attr.attribute_id AND attr.attribute_code = 'media_gallery' AND attr.entity_type_id = 4 \
-INNER JOIN ${DB_PREFIX}catalog_product_entity_media_gallery_value AS value ON main.value_id = value.value_id \
-WHERE main.media_type = 'image' AND entity.entity_id = '${ENTITY_ID}' ORDER BY value.position ASC";
+    SQL_QUERY="SELECT DISTINCT main.value FROM ${DB_PREFIX}catalog_product_entity_media_gallery AS main 
+            INNER JOIN ${DB_PREFIX}catalog_product_entity_media_gallery_value_to_entity AS entity ON main.value_id = entity.value_id 
+            INNER JOIN ${DB_PREFIX}eav_attribute AS attr ON main.attribute_id = attr.attribute_id AND attr.attribute_code = 'media_gallery' AND attr.entity_type_id = 4 
+            INNER JOIN ${DB_PREFIX}catalog_product_entity_media_gallery_value AS value ON main.value_id = value.value_id 
+            WHERE main.media_type = 'image' AND entity.entity_id = ${ENTITY_ID} ORDER BY value.position ASC";
     queryMysql
 }
 
+# Add a new option to process all products
+function getAllProductImages() {
+    SQL_QUERY="SELECT DISTINCT main.value FROM ${DB_PREFIX}catalog_product_entity_media_gallery AS main \
+            INNER JOIN ${DB_PREFIX}catalog_product_entity_media_gallery_value_to_entity AS entity ON main.value_id = entity.value_id \
+            INNER JOIN ${DB_PREFIX}eav_attribute AS attr ON main.attribute_id = attr.attribute_id AND attr.attribute_code = 'media_gallery' AND attr.entity_type_id = 4 \
+            INNER JOIN ${DB_PREFIX}catalog_product_entity_media_gallery_value AS value ON main.value_id = value.value_id \
+            WHERE main.media_type = 'image' ORDER BY value.position ASC";
+    queryMysql
+}
+
+# Add a new option to process all categories
+function getAllCategoryImages() {
+    SQL_QUERY="SELECT DISTINCT value FROM ${DB_PREFIX}catalog_category_entity_varchar \
+               WHERE attribute_id IN (\
+                   SELECT attribute_id FROM ${DB_PREFIX}eav_attribute \
+                   WHERE attribute_code IN ('image', 'thumbnail') \
+                   AND entity_type_id = (SELECT entity_type_id FROM ${DB_PREFIX}eav_entity_type WHERE entity_type_code = 'catalog_category')\
+               ) \
+               AND value IS NOT NULL AND value != ''";
+
+    # _die "SQL_QUERY: ${SQL_QUERY}"
+    queryMysql
+}
+
+# Get category images
+function getCategoryImages()
+{
+    local category_id="$1"
+    SQL_QUERY="SELECT 
+                 CASE 
+                   WHEN value LIKE '/media/catalog/category/%' THEN SUBSTRING(value, LENGTH('/media/catalog/category/') + 1)
+                   ELSE value
+                 END AS value
+               FROM ${DB_PREFIX}catalog_category_entity_varchar 
+               WHERE attribute_id IN (
+                   SELECT attribute_id FROM ${DB_PREFIX}eav_attribute 
+                   WHERE attribute_code IN ('image', 'thumbnail') 
+                   AND entity_type_id = (SELECT entity_type_id FROM ${DB_PREFIX}eav_entity_type WHERE entity_type_code = 'catalog_category')
+               ) 
+               AND entity_id = '${category_id}'
+               AND value IS NOT NULL
+               AND value != ''";
+
+               _die "SQL_QUERY: ${SQL_QUERY}"
+    queryMysql
+}
+
+# Download media files
 function downloadMediaFiles()
 {
     local _images _rsReturn _sshPrivateKeyOption _dryRunOption
-    if [[ "$ENTITY_TYPE" = 'category' ]]; then
-        _images=( $( for i in $(getImagesByCategory) ; do if [[ "$i" != 'value' ]]; then echo $i; fi done ) )
-    elif [[ "$ENTITY_TYPE" = 'product' ]]; then
-        _images=( $( for i in $(getImagesByProduct) ; do if [[ "$i" != 'value' ]]; then echo $i; fi done ) )
-    fi
+    _images=() # Initialize empty array
 
-    # Uncomment for quick testing
-    #declare -a _images=( "/f/i/file1.jpg" "/f/i/file2.jpg" )
+    if [[ "$ALL_PRODUCTS" -eq 1 ]]; then
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && _images+=("$line")
+        done < <(getAllProductImages)
+    elif [[ "$ALL_CATEGORIES" -eq 1 ]]; then
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && _images+=("$line")
+        done < <(getAllCategoryImages)
+    elif [[ "$ENTITY_TYPE" == "category" ]]; then
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && _images+=("$line") # Add non-empty lines to array
+        done < <(getCategoryImages "$ENTITY_ID")
+    elif [[ "$ENTITY_TYPE" == "product" && "$BY_ENTITY" == "category" ]]; then
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && _images+=("$line")
+        done < <(getImagesByCategory "$ENTITY_ID")
+    elif [[ "$ENTITY_TYPE" == "product" ]]; then
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && _images+=("$line")
+        done < <(getImagesByProduct)
+    fi
 
     if [[ ${#_images[@]} -eq 0 ]]; then
         _die "Could not find any images to download. Please check your input parameters."
@@ -486,8 +618,23 @@ function downloadMediaFiles()
         _dryRunOption="--dry-run"
     fi
 
-    # @todo make it as an array based options
-    rsync -ravz --files-from=<( printf "%s\n" "${_images[@]}" ) -e "ssh -p ${SSH_PORT}${_sshPrivateKeyOption}" --info=progress2 --human-readable --stats $_dryRunOption "${SSH_USER}"@"${SSH_HOST}":"${SSH_M2_ROOT_DIR}"/pub/media/catalog/"${ENTITY_TYPE}"/ ./pub/media/catalog/"${ENTITY_TYPE}"/
+    # Determine the correct path based on the entity type
+    local _remotePath
+    if [[ "$ALL_PRODUCTS" -eq 1 || "$ENTITY_TYPE" == "product" ]]; then
+        _remotePath="pub/media/catalog/product/"
+    elif [[ "$ALL_CATEGORIES" -eq 1 || "$ENTITY_TYPE" == "category" ]]; then
+        # Prepend "/media/catalog/category/" if not included in category image paths
+        for i in "${!_images[@]}"; do
+            if [[ ! "${_images[$i]}" =~ ^/media/catalog/category/ ]]; then
+                _images[$i]="/media/catalog/category/${_images[$i]}"
+            fi
+        done
+        _remotePath="pub/"
+    else
+        _die "Invalid entity type or missing parameters."
+    fi
+
+    rsync -ravz --files-from=<( printf "%s\n" "${_images[@]}" ) -e "ssh -p ${SSH_PORT}${_sshPrivateKeyOption}" --human-readable --stats $_dryRunOption "${SSH_USER}"@"${SSH_HOST}":"${SSH_M2_ROOT_DIR}"/$_remotePath ./$_remotePath
 
     _rsReturn=$?
     if [[ "$_rsReturn" -ne 0 ]]; then
@@ -495,17 +642,23 @@ function downloadMediaFiles()
     fi
 }
 
+
+
+# Print success message
 function printSuccessMessage()
 {
     _success "Images have been successfully downloaded."
 
     echo "################################################################"
     echo " >> Entity Type           : ${ENTITY_TYPE}"
+    echo " >> By Entity             : ${BY_ENTITY}"
     echo " >> Entity ID             : ${ENTITY_ID}"
     echo " >> Downloaded Dir        : ${INSTALL_DIR}/pub/media/catalog/${ENTITY_TYPE}"
     echo "################################################################"
     _printPoweredBy
 }
+
+
 
 ################################################################################
 # Main
