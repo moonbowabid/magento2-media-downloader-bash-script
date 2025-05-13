@@ -1,5 +1,7 @@
 # Magento 2 Media Downloader
 
+**Forked and Inspired from [MagePsycho Magento 2 Media Downloader](https://github.com/MagePsycho/magento2-media-downloader-bash-script)**
+
 This is a bash script to quickly download the catalog images for your Magento 2 development from a LIVE or STAGING server.
 
 **When to use this script?**
@@ -14,7 +16,7 @@ Just copy the script and start downloading the required media files for quick de
 ## INSTALL
 You can simply download the script file and give the executable permission.
 ```
-curl -0 https://raw.githubusercontent.com/MagePsycho/magento2-media-downloader-bash-script/master/src/m2-media-downloader.sh -o m2-media-downloader.sh
+curl -0 SCRIPT_URL='https://raw.githubusercontent.com/moonbowabid/magento2-media-downloader-bash-script/refs/heads/main/src/m2-media-downloader.sh' -o m2-media-downloader.sh
 chmod +x m2-media-downloader.sh
 ```
 
@@ -61,7 +63,7 @@ SSH_M2_ROOT_DIR="/var/www/magento2/"
 cd /path/to/magento2
 m2-media-downloader --help
 ```
-![M2 Media Downloader Help](https://github.com/MagePsycho/magento2-media-downloader-bash-script/raw/main/docs/magento2-media-downloader-bash-script-help.png)
+![M2 Media Downloader Help](https://github.com/moonbowabid/magento2-media-downloader-bash-script/blob/updates-by-abid/docs/magento2-media-downloader-bash-script-help.png)
 
 *Note: You have to run the command from Magento 2 root directory*
 
@@ -75,11 +77,23 @@ m2-media-downloader --type=category --id=<categoryId>
 m2-media-downloader --type=product --id=<productId>
 ```
 
+**To download images for all products**
+```
+m2-media-downloader --all-products
+```
+
+**To download images for all categories**
+```
+m2-media-downloader --all-categories
+```
+
 **To test which images will be downloaded**  
 Use `--dry-run` option as:
 ```
 m2-media-downloader --type=category --id=<categoryId> --dry-run
 m2-media-downloader --type=product --id=<productId> --dry-run
+m2-media-downloader --all-products --dry-run
+m2-media-downloader --all-categories --dry-run
 ```
 
 **To update the script**
@@ -126,6 +140,8 @@ https://github.com/MagePsycho/magento2-db-code-backup-bash-script
 
 ## TODOS
 - [x] Support of `--dry-run` option
+- [x] Option to download images for all products
+- [x] Option to download images for all categories
 - [ ] Option to download entire media folder (maybe not required, see **BONUS 2**)
 - [ ] Download color swatches in case of configurable product
 - [ ] Option to download by multiple product/category ids
